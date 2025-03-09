@@ -1,6 +1,6 @@
 
 import { useState, useRef } from 'react';
-import { Certificate, Upload, FileText, Image as ImageIcon, File, Film, Archive, Trash2, Download, Eye } from 'lucide-react';
+import { Award, Upload, FileText, Image as ImageIcon, File, Film, Archive, Trash2, Download, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -143,7 +143,7 @@ const CertificateStorage = () => {
   return (
     <div className="dash-card">
       <div className="dash-card-title">
-        <Certificate className="h-5 w-5" />
+        <Award className="h-5 w-5" />
         <span>Certificate Storage</span>
       </div>
       
@@ -209,7 +209,7 @@ const CertificateStorage = () => {
       
       {certificates.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
-          <Certificate className="h-10 w-10 mx-auto mb-2 opacity-30" />
+          <Award className="h-10 w-10 mx-auto mb-2 opacity-30" />
           <p>No certificates uploaded yet.</p>
           <p className="text-sm">Upload your certificates to store them securely.</p>
         </div>

@@ -1,6 +1,6 @@
 
 import { useEffect } from 'react';
-import { X, Timer, CheckSquare, BarChart3, GitCommit, BookOpen, Instagram, Twitter, Facebook, Certificate, CreditCard, Image } from 'lucide-react';
+import { X, Timer, CheckSquare, BarChart3, GitCommit, BookOpen, Instagram, Twitter, Facebook, Award, CreditCard, Image } from 'lucide-react';
 import { Button } from '../ui/button';
 
 interface SidebarProps {
@@ -154,7 +154,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                   className="w-full justify-start gap-2 rounded-lg h-12 text-base"
                   onClick={() => scrollToSection('certificates')}
                 >
-                  <Certificate size={20} />
+                  <Award size={20} />
                   Certificates
                 </Button>
               </li>
