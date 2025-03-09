@@ -1,6 +1,6 @@
 
 import { useEffect } from 'react';
-import { X, Timer, CheckSquare, BarChart3, GitCommit, BookOpen } from 'lucide-react';
+import { X, Timer, CheckSquare, BarChart3, GitCommit, BookOpen, Instagram, Twitter, Facebook, Certificate, CreditCard, Image } from 'lucide-react';
 import { Button } from '../ui/button';
 
 interface SidebarProps {
@@ -74,7 +74,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       >
         <div className="flex flex-col h-full p-4">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-semibold">StudySculptor</h2>
+            <h2 className="text-xl font-semibold">Aravind Dashboard</h2>
             <Button 
               variant="ghost" 
               size="icon" 
@@ -136,6 +136,36 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                 >
                   <BookOpen size={20} />
                   Notes
+                </Button>
+              </li>
+              <li>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-2 rounded-lg h-12 text-base"
+                  onClick={() => scrollToSection('social')}
+                >
+                  <Instagram size={20} />
+                  Social Media
+                </Button>
+              </li>
+              <li>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-2 rounded-lg h-12 text-base"
+                  onClick={() => scrollToSection('certificates')}
+                >
+                  <Certificate size={20} />
+                  Certificates
+                </Button>
+              </li>
+              <li>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-2 rounded-lg h-12 text-base"
+                  onClick={() => scrollToSection('spending')}
+                >
+                  <CreditCard size={20} />
+                  Spending Tracker
                 </Button>
               </li>
             </ul>

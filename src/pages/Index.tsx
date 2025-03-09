@@ -6,6 +6,9 @@ import TaskManager from '@/components/dashboard/TaskManager';
 import ProgressTracker from '@/components/dashboard/ProgressTracker';
 import HabitTracker from '@/components/dashboard/HabitTracker';
 import Notes from '@/components/dashboard/Notes';
+import SocialMediaManager from '@/components/dashboard/SocialMediaManager';
+import CertificateStorage from '@/components/dashboard/CertificateStorage';
+import SpendingTracker from '@/components/dashboard/SpendingTracker';
 
 const Index = () => {
   useEffect(() => {
@@ -28,8 +31,8 @@ const Index = () => {
       
       <main className="container pt-24 pb-16 px-4 md:px-6">
         <section className="mb-6">
-          <h1 className="heading-1 mb-2">Study Dashboard</h1>
-          <p className="text-muted-foreground">Track your study progress and habits in one place.</p>
+          <h1 className="heading-1 mb-2">Aravind Dashboard</h1>
+          <p className="text-muted-foreground">Track your study progress, habits, and more in one place.</p>
         </section>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -49,10 +52,26 @@ const Index = () => {
             <HabitTracker />
           </section>
           
+          <section id="spending" className="md:col-span-1">
+            <SpendingTracker />
+          </section>
+          
+          <section id="social" className="md:col-span-1">
+            <SocialMediaManager />
+          </section>
+          
+          <section id="certificates" className="md:col-span-2">
+            <CertificateStorage />
+          </section>
+          
           <section id="notes" className="md:col-span-2">
             <Notes />
           </section>
         </div>
+        
+        <footer className="mt-12 py-4 text-center text-sm text-muted-foreground border-t border-border">
+          © {new Date().getFullYear()} All rights reserved by Aravind
+        </footer>
       </main>
     </div>
   );
