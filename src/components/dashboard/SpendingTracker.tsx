@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
 import useLocalStorage from '@/hooks/useLocalStorage';
 
 interface Expense {
@@ -53,10 +54,12 @@ const SpendingTracker = () => {
     
     setExpenses([...expenses, newExpense]);
     resetForm();
+    toast.success('Expense added successfully');
   };
   
   const handleDeleteExpense = (id: string) => {
     setExpenses(expenses.filter(expense => expense.id !== id));
+    toast.success('Expense deleted successfully');
   };
   
   const resetForm = () => {
@@ -156,7 +159,7 @@ const SpendingTracker = () => {
                   label: (context) => {
                     const value = context.raw as number;
                     const percentage = ((value / total) * 100).toFixed(1);
-                    return `$${value.toFixed(2)} (${percentage}%)`;
+                    return `₹${value.toFixed(2)} (${percentage}%)`;
                   },
                 },
               },
@@ -256,7 +259,7 @@ const SpendingTracker = () => {
                   <td>${new Date(expense.date).toLocaleDateString()}</td>
                   <td>${expense.description}</td>
                   <td>${expense.category}</td>
-                  <td>$${expense.amount.toFixed(2)}</td>
+                  <td>₹${expense.amount.toFixed(2)}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -264,9 +267,9 @@ const SpendingTracker = () => {
           
           <div class="summary">
             <h3>Summary</h3>
-            <p><strong>Total Expenses:</strong> $${total.toFixed(2)}</p>
+            <p><strong>Total Expenses:</strong> ₹${total.toFixed(2)}</p>
             ${Object.entries(getCategoryTotals()).map(([category, amount]) => `
-              <p><strong>${category}:</strong> $${amount.toFixed(2)} (${((amount / total) * 100).toFixed(1)}%)</p>
+              <p><strong>${category}:</strong> ₹${amount.toFixed(2)} (${((amount / total) * 100).toFixed(1)}%)</p>
             `).join('')}
           </div>
           
@@ -332,6 +335,7 @@ const SpendingTracker = () => {
             <Button 
               onClick={handleAddExpense}
               disabled={!amount || parseFloat(amount) <= 0 || !description.trim()}
+              className="hover:scale-105 transition-transform"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Expense
@@ -355,7 +359,7 @@ const SpendingTracker = () => {
           
           <Button 
             variant="outline" 
-            className="gap-2"
+            className="gap-2 hover:bg-secondary/70 transition-colors"
             onClick={handlePrint}
             disabled={filteredExpenses.length === 0}
           >
@@ -368,7 +372,7 @@ const SpendingTracker = () => {
           <div className="flex justify-between items-center">
             <div>
               <h3 className="text-sm font-medium text-muted-foreground">Total Expenses</h3>
-              <p className="text-2xl font-semibold">${total.toFixed(2)}</p>
+              <p className="text-2xl font-semibold">₹{total.toFixed(2)}</p>
             </div>
             
             <div className="text-right">
@@ -422,14 +426,14 @@ const SpendingTracker = () => {
                       </div>
                       
                       <div className="flex gap-3 items-center">
-                        <span className="font-medium">${expense.amount.toFixed(2)}</span>
+                        <span className="font-medium">₹{expense.amount.toFixed(2)}</span>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/10 hover:text-red-500"
                           onClick={() => handleDeleteExpense(expense.id)}
                         >
-                          <Trash2 className="h-4 w-4 text-muted-foreground" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>

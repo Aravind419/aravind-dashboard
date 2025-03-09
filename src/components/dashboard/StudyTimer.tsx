@@ -24,6 +24,7 @@ const StudyTimer = () => {
   const startTimeRef = useRef<number | null>(null);
   const lastUpdateRef = useRef<number>(Date.now());
   const timerIdRef = useRef<number | null>(null);
+  const workerRef = useRef<Worker | null>(null);
   
   useEffect(() => {
     // Initialize with the first subject or 'General' if available
@@ -46,90 +47,114 @@ const StudyTimer = () => {
     clearTimers();
   }, [mode, pomodoroMinutes]);
   
-  // Main timer effect using Web Workers API for background operation
+  // Setup timer worker for background operation
   useEffect(() => {
-    if (isRunning) {
-      // Set the start time reference
+    // Create a web worker for handling timer in background
+    if (typeof Worker !== 'undefined' && !workerRef.current) {
+      const workerCode = `
+        let intervalId = null;
+        let startTime = null;
+        let lastTick = null;
+        let isPomodoro = false;
+        let totalTime = 0;
+        
+        self.onmessage = function(e) {
+          if (e.data.action === 'start') {
+            startTime = e.data.startTime || Date.now();
+            lastTick = Date.now();
+            isPomodoro = e.data.isPomodoro;
+            totalTime = e.data.totalTime || 0;
+            
+            clearInterval(intervalId);
+            intervalId = setInterval(() => {
+              const now = Date.now();
+              const elapsed = now - lastTick;
+              lastTick = now;
+              
+              if (isPomodoro) {
+                totalTime = Math.max(0, totalTime - Math.floor(elapsed / 1000));
+                self.postMessage({ time: totalTime, type: 'tick' });
+                
+                if (totalTime <= 0) {
+                  clearInterval(intervalId);
+                  self.postMessage({ type: 'completed' });
+                }
+              } else {
+                const totalElapsed = Math.floor((now - startTime) / 1000);
+                self.postMessage({ time: totalElapsed, type: 'tick' });
+              }
+            }, 1000);
+          } else if (e.data.action === 'stop') {
+            clearInterval(intervalId);
+          } else if (e.data.action === 'sync') {
+            if (isPomodoro) {
+              totalTime = e.data.time;
+            } else {
+              startTime = Date.now() - (e.data.time * 1000);
+            }
+          }
+        };
+      `;
+      
+      const blob = new Blob([workerCode], { type: 'application/javascript' });
+      workerRef.current = new Worker(URL.createObjectURL(blob));
+      
+      workerRef.current.onmessage = (e) => {
+        if (e.data.type === 'tick') {
+          setTime(e.data.time);
+        } else if (e.data.type === 'completed') {
+          saveSession(pomodoroMinutes * 60);
+          setIsRunning(false);
+        }
+      };
+    }
+    
+    return () => {
+      if (workerRef.current) {
+        workerRef.current.terminate();
+        workerRef.current = null;
+      }
+    };
+  }, []);
+  
+  // React to running state changes
+  useEffect(() => {
+    if (isRunning && workerRef.current) {
       if (startTimeRef.current === null) {
         startTimeRef.current = Date.now() - (mode === 'stopwatch' ? time * 1000 : 0);
       }
       
-      // Instead of setInterval, use requestAnimationFrame for better performance
-      // and accurate timing even when tab is not active
-      const updateTimer = () => {
-        const now = Date.now();
-        const elapsed = now - lastUpdateRef.current;
-        lastUpdateRef.current = now;
-        
-        if (mode === 'pomodoro') {
-          setTime(prevTime => {
-            const newTime = Math.max(0, prevTime - Math.floor(elapsed / 1000));
-            if (newTime <= 0 && prevTime > 0) {
-              // Timer completed
-              saveSession(pomodoroMinutes * 60);
-              setIsRunning(false);
-              clearTimers();
-              return 0;
-            }
-            return newTime;
-          });
-        } else {
-          // Stopwatch mode - calculate exact time from start reference
-          const totalElapsed = Math.floor((now - (startTimeRef.current || now)) / 1000);
-          setTime(totalElapsed);
-        }
-        
-        if (isRunning) {
-          timerIdRef.current = requestAnimationFrame(updateTimer);
-        }
-      };
-      
-      timerIdRef.current = requestAnimationFrame(updateTimer);
-      
-      // Use the Page Visibility API to adjust when the page becomes visible again
-      const handleVisibilityChange = () => {
-        if (document.visibilityState === 'visible') {
-          // When page becomes visible again, recalculate the current time
-          const now = Date.now();
-          if (mode === 'pomodoro' && startTimeRef.current !== null) {
-            const elapsedSinceStart = Math.floor((now - startTimeRef.current) / 1000);
-            const remainingTime = Math.max(0, pomodoroMinutes * 60 - elapsedSinceStart);
-            setTime(remainingTime);
-            
-            if (remainingTime <= 0) {
-              // Timer completed while page was hidden
-              saveSession(pomodoroMinutes * 60);
-              setIsRunning(false);
-              clearTimers();
-            }
-          } else if (mode === 'stopwatch' && startTimeRef.current !== null) {
-            const elapsedSinceStart = Math.floor((now - startTimeRef.current) / 1000);
-            setTime(elapsedSinceStart);
-          }
-          
-          lastUpdateRef.current = now;
-        }
-      };
-      
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      
-      return () => {
-        if (timerIdRef.current !== null) {
-          cancelAnimationFrame(timerIdRef.current);
-        }
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-      };
+      workerRef.current.postMessage({
+        action: 'start',
+        startTime: startTimeRef.current,
+        isPomodoro: mode === 'pomodoro',
+        totalTime: time
+      });
+    } else if (!isRunning && workerRef.current) {
+      workerRef.current.postMessage({ action: 'stop' });
     }
-    
-    // Clean up when not running
-    return () => {
-      if (timerIdRef.current !== null) {
-        cancelAnimationFrame(timerIdRef.current);
+  }, [isRunning, mode]);
+  
+  // Handle visibility change
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isRunning && workerRef.current) {
+        // Sync the worker with current time when page becomes visible again
+        workerRef.current.postMessage({ action: 'sync', time });
       }
     };
-  }, [isRunning, mode, pomodoroMinutes]);
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isRunning, time]);
   
   const clearTimers = () => {
+    if (workerRef.current) {
+      workerRef.current.postMessage({ action: 'stop' });
+    }
     if (timerIdRef.current !== null) {
       cancelAnimationFrame(timerIdRef.current);
       timerIdRef.current = null;
@@ -237,7 +262,7 @@ const StudyTimer = () => {
                 variant={pomodoroMinutes === mins ? 'secondary' : 'outline'}
                 size="sm"
                 onClick={() => setPomodoroMinutes(mins)}
-                className="h-8 px-2 text-xs"
+                className="h-8 px-2 text-xs hover:scale-105 transition-transform"
               >
                 {mins}m
               </Button>
@@ -280,7 +305,7 @@ const StudyTimer = () => {
           <Button
             variant="outline"
             size="icon"
-            className="rounded-full h-12 w-12"
+            className="rounded-full h-12 w-12 hover:bg-secondary/70 transition-colors"
             onClick={handleReset}
           >
             <RefreshCw className="h-5 w-5" />
@@ -289,7 +314,7 @@ const StudyTimer = () => {
           <Button
             variant={isRunning ? 'destructive' : 'default'}
             size="icon"
-            className="rounded-full h-14 w-14"
+            className="rounded-full h-14 w-14 hover:scale-105 transition-transform"
             onClick={handleStartPause}
           >
             {isRunning ? (
@@ -303,7 +328,7 @@ const StudyTimer = () => {
             <Button
               variant="outline"
               size="icon"
-              className="rounded-full h-12 w-12"
+              className="rounded-full h-12 w-12 hover:bg-secondary/70 transition-colors"
               onClick={() => {
                 if (time > 0) {
                   saveSession(time);

@@ -1,8 +1,9 @@
 
 import { useEffect, useRef, useState } from 'react';
-import { BarChart3, BarChart, Plus, Trash2 } from 'lucide-react';
+import { BarChart3, BarChart, Plus, Trash2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 import useLocalStorage from '@/hooks/useLocalStorage';
 
 interface StudySession {
@@ -18,6 +19,12 @@ interface Subject {
   color: string;
 }
 
+interface DailyProgress {
+  id: string;
+  date: string;
+  subjectHours: { [subjectId: string]: number };
+}
+
 // Array of colors for subjects
 const subjectColors = [
   '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
@@ -27,8 +34,10 @@ const subjectColors = [
 const ProgressTracker = () => {
   const [studySessions, setStudySessions] = useLocalStorage<StudySession[]>('study-sessions', []);
   const [subjects, setSubjects] = useLocalStorage<Subject[]>('study-subjects', []);
+  const [dailyProgress, setDailyProgress] = useLocalStorage<DailyProgress[]>('daily-progress', []);
   const [newSubjectName, setNewSubjectName] = useState('');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
+  const [hoursSpent, setHoursSpent] = useState('');
   const chartRef = useRef<HTMLCanvasElement>(null);
   const [chartInstance, setChartInstance] = useState<any>(null);
   
@@ -38,6 +47,7 @@ const ProgressTracker = () => {
     
     // Check if subject already exists
     if (subjects.some(s => s.name.toLowerCase() === newSubjectName.trim().toLowerCase())) {
+      toast.error('Subject already exists');
       setNewSubjectName('');
       return;
     }
@@ -50,18 +60,88 @@ const ProgressTracker = () => {
     
     setSubjects([...subjects, newSubject]);
     setNewSubjectName('');
+    toast.success('Subject added successfully');
+  };
+  
+  // Add hours spent on a subject manually
+  const handleAddHours = () => {
+    if (!hoursSpent || selectedSubject === 'all') return;
+    
+    const hours = parseFloat(hoursSpent);
+    if (isNaN(hours) || hours <= 0) {
+      toast.error('Please enter a valid number of hours');
+      return;
+    }
+    
+    const today = new Date().toISOString().split('T')[0];
+    const subjectName = subjects.find(s => s.id === selectedSubject)?.name || 'General';
+    
+    // Create new study session entry
+    const newSession: StudySession = {
+      id: crypto.randomUUID(),
+      subject: subjectName,
+      date: today,
+      duration: hours * 3600 // Convert hours to seconds
+    };
+    
+    setStudySessions([...studySessions, newSession]);
+    setHoursSpent('');
+    toast.success(`Added ${hours} hours for ${subjectName}`);
+    
+    // Update daily progress
+    updateDailyProgress(selectedSubject, hours);
+  };
+  
+  // Update daily progress tracker
+  const updateDailyProgress = (subjectId: string, hours: number) => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Check if there's already an entry for today
+    const existingProgress = dailyProgress.find(p => p.date === today);
+    
+    if (existingProgress) {
+      // Update existing entry
+      const updatedProgress = dailyProgress.map(p => {
+        if (p.date === today) {
+          return {
+            ...p,
+            subjectHours: {
+              ...p.subjectHours,
+              [subjectId]: (p.subjectHours[subjectId] || 0) + hours
+            }
+          };
+        }
+        return p;
+      });
+      setDailyProgress(updatedProgress);
+    } else {
+      // Create new entry
+      const newProgress: DailyProgress = {
+        id: crypto.randomUUID(),
+        date: today,
+        subjectHours: {
+          [subjectId]: hours
+        }
+      };
+      setDailyProgress([...dailyProgress, newProgress]);
+    }
   };
   
   // Delete a subject and its associated sessions
   const handleDeleteSubject = (subjectId: string) => {
+    const subjectToDelete = subjects.find(s => s.id === subjectId);
+    if (!subjectToDelete) return;
+    
     setSubjects(subjects.filter(s => s.id !== subjectId));
     setStudySessions(studySessions.filter(session => 
-      !subjects.find(s => s.id === subjectId)?.name.includes(session.subject)
+      session.subject !== subjectToDelete.name
     ));
     
     if (selectedSubject === subjectId) {
       setSelectedSubject('all');
     }
+    
+    toast.success(`Deleted subject: ${subjectToDelete.name}`);
   };
   
   // Update existing study sessions to include subject info
@@ -94,7 +174,7 @@ const ProgressTracker = () => {
       setSubjects([
         ...subjects,
         {
-          id: crypto.randomUUID(),
+          id: 'general',
           name: 'General',
           color: '#7F8487'
         }
@@ -252,6 +332,10 @@ const ProgressTracker = () => {
                 },
               },
             },
+            animation: {
+              duration: 800,
+              easing: 'easeOutBounce'
+            }
           },
         });
         
@@ -317,6 +401,17 @@ const ProgressTracker = () => {
     return subjectTotals;
   };
   
+  // Get previous day's progress
+  const getPreviousDayProgress = () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayString = yesterday.toISOString().split('T')[0];
+    
+    return dailyProgress.find(p => p.date === yesterdayString);
+  };
+  
+  const previousDayProgress = getPreviousDayProgress();
+  
   return (
     <div className="dash-card">
       <div className="dash-card-title">
@@ -340,18 +435,41 @@ const ProgressTracker = () => {
           <Button 
             onClick={handleAddSubject}
             disabled={!newSubjectName.trim()}
+            className="hover:scale-105 transition-transform"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Subject
           </Button>
         </div>
         
+        {selectedSubject !== 'all' && (
+          <div className="mt-3 flex flex-col sm:flex-row items-center gap-3">
+            <Input
+              type="number"
+              min="0.1"
+              step="0.1"
+              placeholder="Hours spent today"
+              value={hoursSpent}
+              onChange={(e) => setHoursSpent(e.target.value)}
+              className="w-full sm:w-1/2"
+            />
+            <Button 
+              onClick={handleAddHours}
+              disabled={!hoursSpent || parseFloat(hoursSpent) <= 0}
+              className="w-full sm:w-auto hover:scale-105 transition-transform"
+            >
+              <Clock className="h-4 w-4 mr-2" />
+              Record Hours
+            </Button>
+          </div>
+        )}
+        
         <div className="mt-3 flex flex-wrap gap-2">
           <Button
             variant={selectedSubject === 'all' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setSelectedSubject('all')}
-            className="py-1 h-8"
+            className="py-1 h-8 hover:scale-105 transition-transform"
           >
             All Subjects
           </Button>
@@ -362,7 +480,7 @@ const ProgressTracker = () => {
                 variant={selectedSubject === subject.id ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setSelectedSubject(subject.id)}
-                className="py-1 h-8 pr-1"
+                className="py-1 h-8 pr-1 hover:scale-105 transition-transform"
                 style={{
                   backgroundColor: selectedSubject === subject.id ? subject.color : 'transparent',
                   borderColor: subject.color,
@@ -382,7 +500,7 @@ const ProgressTracker = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 ml-1"
+                  className="h-6 w-6 ml-1 hover:bg-red-500/10 hover:text-red-500"
                   onClick={() => handleDeleteSubject(subject.id)}
                 >
                   <Trash2 className="h-3 w-3" />
@@ -394,17 +512,44 @@ const ProgressTracker = () => {
       </div>
       
       <div className="mb-4 grid grid-cols-2 gap-4">
-        <div className="bg-secondary/50 rounded-xl p-4">
+        <div className="bg-secondary/50 rounded-xl p-4 hover:bg-secondary/70 transition-colors">
           <h3 className="text-sm font-medium text-muted-foreground mb-1">Weekly Total</h3>
           <p className="text-2xl font-semibold">{formatTotalTime(weeklyTotal)}</p>
         </div>
-        <div className="bg-secondary/50 rounded-xl p-4">
+        <div className="bg-secondary/50 rounded-xl p-4 hover:bg-secondary/70 transition-colors">
           <h3 className="text-sm font-medium text-muted-foreground mb-1">Daily Average</h3>
           <p className="text-2xl font-semibold">
             {formatTotalTime(Math.round(weeklyTotal / 7))}
           </p>
         </div>
       </div>
+      
+      {previousDayProgress && (
+        <div className="mb-4 bg-secondary/30 rounded-xl p-4 animate-fade-in">
+          <h3 className="text-sm font-semibold mb-2">Yesterday's Progress</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {Object.entries(previousDayProgress.subjectHours).map(([subjectId, hours]) => {
+              const subject = subjects.find(s => s.id === subjectId);
+              if (!subject) return null;
+              
+              return (
+                <div 
+                  key={subjectId}
+                  className="flex items-center p-2 rounded-lg hover:bg-secondary/20 transition-colors"
+                  style={{ backgroundColor: `${subject.color}10` }}
+                >
+                  <span 
+                    className="mr-2 inline-block w-3 h-3 rounded-full"
+                    style={{ backgroundColor: subject.color }}
+                  />
+                  <span className="flex-1 truncate">{subject.name}</span>
+                  <span className="font-medium">{hours.toFixed(1)}h</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       
       {selectedSubject === 'all' && subjects.length > 1 && studySessions.length > 0 && (
         <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -415,7 +560,7 @@ const ProgressTracker = () => {
               return (
                 <div
                   key={subjectName}
-                  className="flex items-center p-2 rounded-lg"
+                  className="flex items-center p-2 rounded-lg hover:scale-[1.02] transition-transform"
                   style={{ backgroundColor: `${subject?.color}20` }}
                 >
                   <span 

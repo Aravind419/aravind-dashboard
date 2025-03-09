@@ -4,6 +4,7 @@ import { Instagram, Twitter, Facebook, Trash2, Plus, Linkedin, Youtube, Github }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
 import useLocalStorage from '@/hooks/useLocalStorage';
 
 type SocialMediaPlatform = 'instagram' | 'twitter' | 'facebook' | 'linkedin' | 'youtube' | 'github';
@@ -13,6 +14,7 @@ interface SocialMediaAccount {
   platform: SocialMediaPlatform;
   username: string;
   url: string;
+  subscribers: number;
 }
 
 const socialIcons = {
@@ -38,6 +40,7 @@ const SocialMediaManager = () => {
   const [platform, setPlatform] = useState<SocialMediaPlatform>('instagram');
   const [username, setUsername] = useState('');
   const [url, setUrl] = useState('');
+  const [subscribers, setSubscribers] = useState('');
   const [isFormVisible, setIsFormVisible] = useState(false);
   
   const handleAddAccount = () => {
@@ -47,26 +50,40 @@ const SocialMediaManager = () => {
       id: crypto.randomUUID(),
       platform,
       username,
-      url: url.startsWith('http') ? url : `https://${url}`
+      url: url.startsWith('http') ? url : `https://${url}`,
+      subscribers: subscribers ? parseInt(subscribers) : 0
     };
     
     setAccounts([...accounts, newAccount]);
     resetForm();
+    toast.success('Social media account added successfully');
   };
   
   const handleDeleteAccount = (id: string) => {
     setAccounts(accounts.filter(account => account.id !== id));
+    toast.success('Account removed successfully');
   };
   
   const resetForm = () => {
     setPlatform('instagram');
     setUsername('');
     setUrl('');
+    setSubscribers('');
     setIsFormVisible(false);
   };
   
   const openInNewTab = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');
+  };
+  
+  // Format subscriber count for display
+  const formatSubscribers = (count: number) => {
+    if (count >= 1000000) {
+      return (count / 1000000).toFixed(1) + 'M';
+    } else if (count >= 1000) {
+      return (count / 1000).toFixed(1) + 'K';
+    }
+    return count.toString();
   };
   
   return (
@@ -80,16 +97,16 @@ const SocialMediaManager = () => {
         {!isFormVisible ? (
           <Button 
             onClick={() => setIsFormVisible(true)}
-            className="gap-2"
+            className="gap-2 hover:scale-105 transition-transform"
           >
             <Plus className="h-4 w-4" />
             Add Social Account
           </Button>
         ) : (
-          <div className="space-y-3 p-4 bg-secondary/30 rounded-lg">
+          <div className="space-y-3 p-4 bg-secondary/30 rounded-lg animate-fade-in">
             <div className="flex flex-col md:flex-row gap-3">
               <Select value={platform} onValueChange={(val: SocialMediaPlatform) => setPlatform(val)}>
-                <SelectTrigger className="w-full md:w-1/3">
+                <SelectTrigger className="w-full md:w-1/4">
                   <SelectValue placeholder="Platform" />
                 </SelectTrigger>
                 <SelectContent>
@@ -106,20 +123,34 @@ const SocialMediaManager = () => {
                 placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full md:w-1/3"
+                className="w-full md:w-1/4"
               />
               
               <Input
                 placeholder="Profile URL"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                className="w-full md:w-1/3"
+                className="w-full md:w-1/4"
+              />
+              
+              <Input
+                placeholder="Subscribers/Followers"
+                type="number"
+                value={subscribers}
+                onChange={(e) => setSubscribers(e.target.value)}
+                className="w-full md:w-1/4"
               />
             </div>
             
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={resetForm}>Cancel</Button>
-              <Button onClick={handleAddAccount} disabled={!username.trim() || !url.trim()}>Save Account</Button>
+              <Button 
+                onClick={handleAddAccount}
+                disabled={!username.trim() || !url.trim()}
+                className="hover:scale-105 transition-transform"
+              >
+                Save Account
+              </Button>
             </div>
           </div>
         )}
@@ -143,6 +174,11 @@ const SocialMediaManager = () => {
               <div className="flex-1 overflow-hidden">
                 <h3 className="font-medium text-white">{account.platform.charAt(0).toUpperCase() + account.platform.slice(1)}</h3>
                 <p className="text-sm opacity-90 truncate">@{account.username}</p>
+                {account.subscribers > 0 && (
+                  <p className="text-xs opacity-75 mt-1">
+                    {formatSubscribers(account.subscribers)} subscribers
+                  </p>
+                )}
               </div>
               <Button
                 variant="ghost"
