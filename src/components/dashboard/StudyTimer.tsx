@@ -1,15 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { Timer, Play, Pause, RefreshCw, Clock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Timer } from 'lucide-react';
 import useLocalStorage from '@/hooks/useLocalStorage';
-
-interface StudySession {
-  id: string;
-  subject: string;
-  date: string;
-  duration: number;
-}
+import { formatTime, createStudySession, type StudySession } from '@/utils/timerUtils';
+import { createTimerWorker } from '@/utils/timerWorker';
+import TimerModeSelector from './timer/TimerModeSelector';
+import PomodoroTimer from './timer/PomodoroTimer';
+import SubjectSelector from './timer/SubjectSelector';
+import TimerControls from './timer/TimerControls';
 
 const StudyTimer = () => {
   const [mode, setMode] = useState<'pomodoro' | 'stopwatch'>('stopwatch');
@@ -51,53 +48,7 @@ const StudyTimer = () => {
   useEffect(() => {
     // Create a web worker for handling timer in background
     if (typeof Worker !== 'undefined' && !workerRef.current) {
-      const workerCode = `
-        let intervalId = null;
-        let startTime = null;
-        let lastTick = null;
-        let isPomodoro = false;
-        let totalTime = 0;
-        
-        self.onmessage = function(e) {
-          if (e.data.action === 'start') {
-            startTime = e.data.startTime || Date.now();
-            lastTick = Date.now();
-            isPomodoro = e.data.isPomodoro;
-            totalTime = e.data.totalTime || 0;
-            
-            clearInterval(intervalId);
-            intervalId = setInterval(() => {
-              const now = Date.now();
-              const elapsed = now - lastTick;
-              lastTick = now;
-              
-              if (isPomodoro) {
-                totalTime = Math.max(0, totalTime - Math.floor(elapsed / 1000));
-                self.postMessage({ time: totalTime, type: 'tick' });
-                
-                if (totalTime <= 0) {
-                  clearInterval(intervalId);
-                  self.postMessage({ type: 'completed' });
-                }
-              } else {
-                const totalElapsed = Math.floor((now - startTime) / 1000);
-                self.postMessage({ time: totalElapsed, type: 'tick' });
-              }
-            }, 1000);
-          } else if (e.data.action === 'stop') {
-            clearInterval(intervalId);
-          } else if (e.data.action === 'sync') {
-            if (isPomodoro) {
-              totalTime = e.data.time;
-            } else {
-              startTime = Date.now() - (e.data.time * 1000);
-            }
-          }
-        };
-      `;
-      
-      const blob = new Blob([workerCode], { type: 'application/javascript' });
-      workerRef.current = new Worker(URL.createObjectURL(blob));
+      workerRef.current = createTimerWorker();
       
       workerRef.current.onmessage = (e) => {
         if (e.data.type === 'tick') {
@@ -162,33 +113,11 @@ const StudyTimer = () => {
     startTimeRef.current = null;
   };
   
-  const formatTime = (seconds: number): string => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    
-    return [
-      h > 0 ? h.toString().padStart(2, '0') : '00',
-      m.toString().padStart(2, '0'),
-      s.toString().padStart(2, '0')
-    ].join(':');
-  };
-  
   const saveSession = (duration: number) => {
-    if (duration <= 0) return;
-    
-    const today = new Date().toISOString().split('T')[0];
-    const subjectName = subjects.find(s => s.id === selectedSubject)?.name || 'General';
-    
-    // Create new study session entry
-    const newSession: StudySession = {
-      id: crypto.randomUUID(),
-      subject: subjectName,
-      date: today,
-      duration: duration
-    };
-    
-    setStudySessions([...studySessions, newSession]);
+    const newSession = createStudySession(duration, selectedSubject, subjects);
+    if (newSession) {
+      setStudySessions([...studySessions, newSession]);
+    }
   };
   
   const handleStartPause = () => {
@@ -226,6 +155,15 @@ const StudyTimer = () => {
       setTime(0);
     }
   };
+
+  const handleSaveAndReset = () => {
+    if (time > 0) {
+      saveSession(time);
+      setTime(0);
+      setIsRunning(false);
+      clearTimers();
+    }
+  };
   
   return (
     <div className="dash-card">
@@ -235,114 +173,33 @@ const StudyTimer = () => {
       </div>
       
       <div className="flex flex-col items-center">
-        <div className="mb-4 bg-secondary rounded-lg p-1 inline-flex">
-          <Button 
-            variant={mode === 'stopwatch' ? 'default' : 'ghost'} 
-            size="sm"
-            onClick={() => setMode('stopwatch')}
-            className="rounded-md transition-all"
-          >
-            Stopwatch
-          </Button>
-          <Button 
-            variant={mode === 'pomodoro' ? 'default' : 'ghost'} 
-            size="sm"
-            onClick={() => setMode('pomodoro')}
-            className="rounded-md transition-all"
-          >
-            Pomodoro
-          </Button>
-        </div>
+        <TimerModeSelector mode={mode} setMode={setMode} />
         
         {mode === 'pomodoro' && (
-          <div className="w-full mb-4 flex justify-center gap-2">
-            {[15, 25, 30, 45, 60].map(mins => (
-              <Button
-                key={mins}
-                variant={pomodoroMinutes === mins ? 'secondary' : 'outline'}
-                size="sm"
-                onClick={() => setPomodoroMinutes(mins)}
-                className="h-8 px-2 text-xs hover:scale-105 transition-transform"
-              >
-                {mins}m
-              </Button>
-            ))}
-          </div>
+          <PomodoroTimer 
+            pomodoroMinutes={pomodoroMinutes} 
+            setPomodoroMinutes={setPomodoroMinutes} 
+          />
         )}
         
-        <div className="w-full mb-4">
-          <Select 
-            value={selectedSubject} 
-            onValueChange={setSelectedSubject}
-          >
-            <SelectTrigger className="w-full max-w-xs mx-auto">
-              <SelectValue placeholder="Select Subject" />
-            </SelectTrigger>
-            <SelectContent>
-              {subjects.map(subject => (
-                <SelectItem key={subject.id} value={subject.id}>
-                  <div className="flex items-center">
-                    <span 
-                      className="mr-2 inline-block w-2 h-2 rounded-full" 
-                      style={{ backgroundColor: subject.color }}
-                    />
-                    {subject.name}
-                  </div>
-                </SelectItem>
-              ))}
-              {subjects.length === 0 && (
-                <SelectItem value="general">General</SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
+        <SubjectSelector 
+          selectedSubject={selectedSubject}
+          setSelectedSubject={setSelectedSubject}
+          subjects={subjects}
+        />
         
         <div className="text-6xl font-mono font-semibold tracking-tight my-8">
           {formatTime(time)}
         </div>
         
-        <div className="flex gap-4">
-          <Button
-            variant="outline"
-            size="icon"
-            className="rounded-full h-12 w-12 hover:bg-secondary/70 transition-colors"
-            onClick={handleReset}
-          >
-            <RefreshCw className="h-5 w-5" />
-          </Button>
-          
-          <Button
-            variant={isRunning ? 'destructive' : 'default'}
-            size="icon"
-            className="rounded-full h-14 w-14 hover:scale-105 transition-transform"
-            onClick={handleStartPause}
-          >
-            {isRunning ? (
-              <Pause className="h-6 w-6" />
-            ) : (
-              <Play className="h-6 w-6 ml-1" />
-            )}
-          </Button>
-          
-          {mode === 'stopwatch' && (
-            <Button
-              variant="outline"
-              size="icon"
-              className="rounded-full h-12 w-12 hover:bg-secondary/70 transition-colors"
-              onClick={() => {
-                if (time > 0) {
-                  saveSession(time);
-                  setTime(0);
-                  setIsRunning(false);
-                  clearTimers();
-                }
-              }}
-              disabled={time === 0}
-            >
-              <Clock className="h-5 w-5" />
-            </Button>
-          )}
-        </div>
+        <TimerControls 
+          isRunning={isRunning}
+          time={time}
+          mode={mode}
+          onStartPause={handleStartPause}
+          onReset={handleReset}
+          onSave={mode === 'stopwatch' ? handleSaveAndReset : undefined}
+        />
       </div>
     </div>
   );
