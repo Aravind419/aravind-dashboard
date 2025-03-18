@@ -1,6 +1,5 @@
-
 import { useState, useRef } from 'react';
-import { Award, Upload, FileText, Image as ImageIcon, File, Film, Archive, Trash2, Download, Eye } from 'lucide-react';
+import { Award, Upload, FileText, Image as ImageIcon, File, Film, Archive, Trash2, Download, Eye, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -135,7 +134,6 @@ const CertificateStorage = () => {
     }
   };
   
-  // Group certificates by category
   const imageFiles = certificates.filter(cert => getFileCategory(cert.fileType) === 'images');
   const documentFiles = certificates.filter(cert => getFileCategory(cert.fileType) === 'documents');
   const otherFiles = certificates.filter(cert => getFileCategory(cert.fileType) === 'other');
@@ -180,7 +178,6 @@ const CertificateStorage = () => {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="max-w-md mx-auto"
-                  // Prevent click from bubbling up to parent div which would trigger fileInputRef
                   onClick={(e) => e.stopPropagation()}
                 />
                 
