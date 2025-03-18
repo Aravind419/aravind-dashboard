@@ -35,7 +35,7 @@ const Header = () => {
           >
             <Menu size={24} />
           </Button>
-          <h1 className="text-xl font-semibold ml-2">Aravind Dashboard</h1>
+          <h1 className="text-xl font-semibold ml-2">Dashboard</h1>
         </div>
         
         <div className="flex items-center gap-4">

@@ -26,7 +26,7 @@ const Index = () => {
     }
     
     // Welcome toast
-    toast.success('Welcome to Aravind Dashboard', {
+    toast.success('Welcome to Dashboard', {
       description: 'Track your study progress, habits, and more in one place.'
     });
   }, []);
@@ -37,7 +37,7 @@ const Index = () => {
       
       <main className="container pt-24 pb-16 px-4 md:px-6">
         <section className="mb-6 animate-fade-in">
-          <h1 className="heading-1 mb-2">Aravind Dashboard</h1>
+          <h1 className="heading-1 mb-2">Dashboard</h1>
           <p className="text-muted-foreground">Track your study progress, habits, and more in one place.</p>
         </section>
         
@@ -76,7 +76,7 @@ const Index = () => {
         </div>
         
         <footer className="mt-12 py-4 text-center text-sm text-muted-foreground border-t border-border">
-          © {new Date().getFullYear()} All rights reserved by Aravind
+          © {new Date().getFullYear()} All rights reserved
         </footer>
       </main>
     </div>

@@ -180,11 +180,19 @@ const CertificateStorage = () => {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="max-w-md mx-auto"
+                  // Prevent click from bubbling up to parent div which would trigger fileInputRef
+                  onClick={(e) => e.stopPropagation()}
                 />
                 
                 <div className="flex gap-2 justify-center">
-                  <Button variant="outline" onClick={resetForm}>Cancel</Button>
-                  <Button onClick={handleSave} disabled={!title.trim()}>Save Certificate</Button>
+                  <Button variant="outline" onClick={(e) => {
+                    e.stopPropagation();
+                    resetForm();
+                  }}>Cancel</Button>
+                  <Button onClick={(e) => {
+                    e.stopPropagation();
+                    handleSave();
+                  }} disabled={!title.trim()}>Save Certificate</Button>
                 </div>
               </div>
             </div>
@@ -258,7 +266,7 @@ const CertificateStorage = () => {
                 <div className="p-4 border-b flex items-center justify-between">
                   <h3 className="text-lg font-medium">{selectedCertificate.title}</h3>
                   <Button variant="ghost" size="icon" onClick={() => setSelectedCertificate(null)}>
-                    <Trash2 className="h-4 w-4" />
+                    <X className="h-4 w-4" />
                   </Button>
                 </div>
                 
