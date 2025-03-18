@@ -7,7 +7,6 @@ import SocialMediaForm from './social/SocialMediaForm';
 import SocialMediaCard from './social/SocialMediaCard';
 import { SocialMediaAccount, SocialMediaPlatform } from './social/types';
 import { formatSubscribers, openInNewTab } from './social/socialUtils';
-import { getSocialIcons } from './social/SocialIcons';
 
 const SocialMediaManager = () => {
   const [accounts, setAccounts] = useLocalStorage<SocialMediaAccount[]>('social-accounts', []);
@@ -16,8 +15,6 @@ const SocialMediaManager = () => {
   const [url, setUrl] = useState('');
   const [subscribers, setSubscribers] = useState('');
   const [isFormVisible, setIsFormVisible] = useState(false);
-  
-  const socialIcons = getSocialIcons();
   
   const handleAddAccount = () => {
     if (!username.trim() || !url.trim()) return;

@@ -21,11 +21,7 @@ export const platformColors: Record<SocialMediaPlatform, string> = {
   github: 'bg-gray-800'
 };
 
-export const socialIcons: Record<SocialMediaPlatform, ReactNode> = {
-  instagram: <Instagram className="h-5 w-5" />,
-  twitter: <Twitter className="h-5 w-5" />,
-  facebook: <Facebook className="h-5 w-5" />,
-  linkedin: <Linkedin className="h-5 w-5" />,
-  youtube: <Youtube className="h-5 w-5" />,
-  github: <Github className="h-5 w-5" />
-};
+// In a TypeScript file, we can't directly assign JSX elements in an object
+// We'll use the function from SocialIcons.tsx instead
+import { getSocialIcons } from './SocialIcons';
+export const socialIcons = getSocialIcons();
