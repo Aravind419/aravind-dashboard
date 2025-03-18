@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from 'react';
-import { GitCommit, Trophy, Hash, Github } from 'lucide-react';
+import { GitCommit, Trophy, Hash, Github, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -35,7 +34,6 @@ const HabitTracker = () => {
       return;
     }
     
-    // Sort problems by date
     const sortedProblems = [...problems].sort((a, b) => 
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
@@ -43,27 +41,22 @@ const HabitTracker = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Check if there's a problem solved today
     const latestProblemDate = new Date(sortedProblems[0].date);
     latestProblemDate.setHours(0, 0, 0, 0);
     
-    // If the latest problem is not from today or yesterday, streak is broken
     if (today.getTime() - latestProblemDate.getTime() > 86400000 * 1) {
       setStreak(0);
       return;
     }
     
-    // Calculate current streak
     let currentStreak = 1;
     let currentDate = latestProblemDate;
     
-    // Get unique dates with problems
     const uniqueDates = new Set(sortedProblems.map(p => p.date));
     const uniqueDatesSorted = [...uniqueDates].sort((a, b) => 
       new Date(b).getTime() - new Date(a).getTime()
     );
     
-    // Count consecutive days
     for (let i = 1; i < uniqueDatesSorted.length; i++) {
       const prevDate = new Date(uniqueDatesSorted[i - 1]);
       prevDate.setHours(0, 0, 0, 0);
@@ -71,7 +64,6 @@ const HabitTracker = () => {
       const currDate = new Date(uniqueDatesSorted[i]);
       currDate.setHours(0, 0, 0, 0);
       
-      // Check if dates are consecutive
       const diffTime = prevDate.getTime() - currDate.getTime();
       if (diffTime === 86400000) {
         currentStreak++;
@@ -100,6 +92,10 @@ const HabitTracker = () => {
     });
   };
   
+  const deleteProblem = (id: string) => {
+    setProblems(problems.filter(problem => problem.id !== id));
+  };
+  
   const getDifficultyColor = (difficulty: 'Easy' | 'Medium' | 'Hard') => {
     switch (difficulty) {
       case 'Easy':
@@ -113,7 +109,6 @@ const HabitTracker = () => {
     }
   };
   
-  // Create heat map data for the last 30 days
   const generateHeatMapData = () => {
     const days = Array.from({ length: 30 }, (_, i) => {
       const date = new Date();
@@ -236,7 +231,7 @@ const HabitTracker = () => {
               problems.slice(0, 10).map((problem) => (
                 <div 
                   key={problem.id}
-                  className="p-3 bg-secondary/50 rounded-lg"
+                  className="p-3 bg-secondary/50 rounded-lg group relative"
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -260,9 +255,20 @@ const HabitTracker = () => {
                         })}
                       </div>
                     </div>
-                    <span className={`text-sm font-medium ${getDifficultyColor(problem.difficulty)}`}>
-                      {problem.difficulty}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-medium ${getDifficultyColor(problem.difficulty)}`}>
+                        {problem.difficulty}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/10 hover:text-red-500"
+                        onClick={() => deleteProblem(problem.id)}
+                        aria-label="Delete problem"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))

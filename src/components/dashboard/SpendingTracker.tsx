@@ -432,6 +432,7 @@ const SpendingTracker = () => {
                           size="icon"
                           className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/10 hover:text-red-500"
                           onClick={() => handleDeleteExpense(expense.id)}
+                          aria-label="Delete expense"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
