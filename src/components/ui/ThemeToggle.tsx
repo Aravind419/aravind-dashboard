@@ -2,26 +2,60 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Moon, Sun } from 'lucide-react';
+import axios from 'axios';
+
+const API_URL = 'http://localhost:5000/api';
 
 const ThemeToggle = () => {
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    // Check for theme preference in localStorage or use system preference
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const fetchTheme = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/theme`);
+        const savedTheme = response.data.value as 'light' | 'dark';
+        setTheme(savedTheme || 'dark');
+        document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+      } catch (error) {
+        console.error('Error fetching theme:', error);
+        // Fallback to system preference
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const fallbackTheme = prefersDark ? 'dark' : 'light';
+        setTheme(fallbackTheme);
+        document.documentElement.classList.toggle('dark', fallbackTheme === 'dark');
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light');
-    setTheme(initialTheme);
-    document.documentElement.classList.toggle('dark', initialTheme === 'dark');
+    fetchTheme();
   }, []);
   
-  const toggleTheme = () => {
+  const toggleTheme = async () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
     document.documentElement.classList.toggle('dark', newTheme === 'dark');
-    localStorage.setItem('theme', newTheme);
+    
+    try {
+      await axios.post(`${API_URL}/theme`, { value: newTheme });
+    } catch (error) {
+      console.error('Error saving theme preference:', error);
+    }
   };
+  
+  if (isLoading) {
+    return (
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="rounded-full"
+        disabled
+      >
+        <Sun size={20} className="opacity-50" />
+      </Button>
+    );
+  }
   
   return (
     <Button 
