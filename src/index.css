@@ -135,3 +135,6 @@
     color-scheme: dark;
   }
 }
+#lovable-badge {
+    display: none !important;
+}
